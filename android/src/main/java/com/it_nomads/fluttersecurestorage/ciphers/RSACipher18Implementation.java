@@ -6,6 +6,7 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.util.Log;
 
 import java.math.BigInteger;
 import java.security.Key;
@@ -21,13 +22,13 @@ import java.util.Locale;
 import javax.crypto.Cipher;
 import javax.security.auth.x500.X500Principal;
 
+
 class RSACipher18Implementation {
 
     private final String KEY_ALIAS;
     private static final String KEYSTORE_PROVIDER_ANDROID = "AndroidKeyStore";
     private static final String TYPE_RSA = "RSA";
     private Context context;
-
 
     public RSACipher18Implementation(Context context) throws Exception {
         KEY_ALIAS = context.getPackageName() + ".FlutterSecureStoragePluginKey";
@@ -102,9 +103,14 @@ class RSACipher18Implementation {
 
     private Cipher getRSACipher() throws Exception {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return Cipher.getInstance("RSA/ECB/PKCS1Padding", "AndroidOpenSSL"); // error in android 6: InvalidKeyException: Need RSA private or public key
+            return Cipher.getInstance("RSA/ECB/PKCS1Padding", "AndroidOpenSSL"); // error in android 6:
+                                                                                 // InvalidKeyException: Need RSA
+                                                                                 // private or public key
         } else {
-            return Cipher.getInstance("RSA/ECB/PKCS1Padding", "AndroidKeyStoreBCWorkaround"); // error in android 5: NoSuchProviderException: Provider not available: AndroidKeyStoreBCWorkaround
+            return Cipher.getInstance("RSA/ECB/PKCS1Padding", "AndroidKeyStoreBCWorkaround"); // error in android 5:
+                                                                                              // NoSuchProviderException:
+                                                                                              // Provider not available:
+                                                                                              // AndroidKeyStoreBCWorkaround
         }
     }
 
@@ -174,20 +180,41 @@ class RSACipher18Implementation {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 spec = makeAlgorithmParameterSpecLegacy(context, start, end);
             } else {
-                KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT)
-                        .setCertificateSubject(new X500Principal("CN=" + KEY_ALIAS))
-                        .setDigests(KeyProperties.DIGEST_SHA256)
-                        .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
-                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
-                        .setCertificateSerialNumber(BigInteger.valueOf(1))
-                        .setCertificateNotBefore(start.getTime())
-                        .setCertificateNotAfter(end.getTime());
+                KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(KEY_ALIAS,
+                        KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT)
+                                .setCertificateSubject(new X500Principal("CN=" + KEY_ALIAS))
+                                .setDigests(KeyProperties.DIGEST_SHA256)
+                                .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
+                                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                                .setCertificateSerialNumber(BigInteger.valueOf(1))
+                                .setCertificateNotBefore(start.getTime())
+                                .setCertificateNotAfter(end.getTime());
 
                 spec = builder.build();
             }
 
             kpGenerator.initialize(spec);
             kpGenerator.generateKeyPair();
+        } catch (Exception se) {
+            Log.e("fluttersecurestorage",
+                    "An error occurred when trying to generate a StrongBoxSecurityKey: " + se.getMessage());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                if (se instanceof StrongBoxUnavailableException) {
+                    Log.i("fluttersecurestorage", "StrongBox is unavailable on this device");
+                    spec = new KeyGenParameterSpec.Builder(KEY_ALIAS,
+                            KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT)
+                                    .setCertificateSubject(new X500Principal("CN=" + KEY_ALIAS))
+                                    .setDigests(KeyProperties.DIGEST_SHA256)
+                                    .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
+                                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                                    .setCertificateSerialNumber(BigInteger.valueOf(1))
+                                    .setCertificateNotBefore(start.getTime())
+                                    .setCertificateNotAfter(end.getTime())
+                                    .build();
+                    kpGenerator.initialize(spec);
+                    kpGenerator.generateKeyPair();
+                }
+            }
         } finally {
             setLocale(localeBeforeFakingEnglishLocale);
         }
