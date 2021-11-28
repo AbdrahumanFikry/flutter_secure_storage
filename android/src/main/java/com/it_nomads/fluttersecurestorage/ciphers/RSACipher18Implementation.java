@@ -6,7 +6,6 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
-import android.util.Log;
 
 import java.math.BigInteger;
 import java.security.Key;
@@ -21,7 +20,7 @@ import java.util.Locale;
 
 import javax.crypto.Cipher;
 import javax.security.auth.x500.X500Principal;
-
+import android.util.Log;
 
 class RSACipher18Implementation {
 
@@ -199,21 +198,20 @@ class RSACipher18Implementation {
             Log.e("fluttersecurestorage",
                     "An error occurred when trying to generate a StrongBoxSecurityKey: " + se.getMessage());
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                if (se instanceof StrongBoxUnavailableException) {
-                    Log.i("fluttersecurestorage", "StrongBox is unavailable on this device");
-                    spec = new KeyGenParameterSpec.Builder(KEY_ALIAS,
-                            KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT)
-                                    .setCertificateSubject(new X500Principal("CN=" + KEY_ALIAS))
-                                    .setDigests(KeyProperties.DIGEST_SHA256)
-                                    .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
-                                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
-                                    .setCertificateSerialNumber(BigInteger.valueOf(1))
-                                    .setCertificateNotBefore(start.getTime())
-                                    .setCertificateNotAfter(end.getTime())
-                                    .build();
-                    kpGenerator.initialize(spec);
-                    kpGenerator.generateKeyPair();
-                }
+                Log.i("fluttersecurestorage", "StrongBox is unavailable on this device");
+                spec = new KeyGenParameterSpec.Builder(KEY_ALIAS,
+                        KeyProperties.PURPOSE_DECRYPT | KeyProperties.PURPOSE_ENCRYPT)
+                                .setCertificateSubject(new X500Principal("CN=" + KEY_ALIAS))
+                                .setDigests(KeyProperties.DIGEST_SHA256)
+                                .setBlockModes(KeyProperties.BLOCK_MODE_ECB)
+                                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                                .setCertificateSerialNumber(BigInteger.valueOf(1))
+                                .setCertificateNotBefore(start.getTime())
+                                .setCertificateNotAfter(end.getTime())
+                                .build();
+                kpGenerator.initialize(spec);
+                kpGenerator.generateKeyPair();
+
             }
         } finally {
             setLocale(localeBeforeFakingEnglishLocale);
