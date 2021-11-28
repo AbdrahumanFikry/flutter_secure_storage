@@ -188,7 +188,17 @@ class RSACipher18Implementation {
 
             kpGenerator.initialize(spec);
             kpGenerator.generateKeyPair();
-        } finally {
+        }  catch (final Exception e) {
+            e.printStackTrace();
+            if (e instanceof InvalidKeyException) { 
+                if (retry) {
+                    keyStore.deleteEntry(keyName);
+                    return getCypher(keyName, false);
+                } else {
+                    throw e;
+                }
+            }
+        }finally {
             setLocale(localeBeforeFakingEnglishLocale);
         }
     }
